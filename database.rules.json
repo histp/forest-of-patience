@@ -1,0 +1,8 @@
+{
+  "rules": {
+    "forest": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}
