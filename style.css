@@ -16,8 +16,8 @@
   --ground: #C9DCC6;
   --slot: rgba(255,255,255,.55);
   --slot-line: rgba(30,58,44,.28);
-  --font-display: "Jua", "Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-  --font-body: "Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  --font-display: "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  --font-body: "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
   --radius: 14px;
 }
 @media (prefers-color-scheme: dark) {
@@ -234,3 +234,41 @@ button { cursor: pointer; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 .mode.err { color: #C0392B; font-weight: 700; }
+
+/* ---------- Pretendard 굵기 ---------- */
+.title { font-weight: 800; letter-spacing: -0.03em; }
+.brand { font-weight: 800; letter-spacing: -0.02em; }
+.panel h2, .weeks button b { font-weight: 700; letter-spacing: -0.01em; }
+.btn-game { font-weight: 700; font-size: 19px; }
+.me-chip { font-weight: 700; }
+.me-chip b, .count b { font-weight: 800; }
+.group-head .gname { font-weight: 700; width: auto; border: 0; padding: 0; }
+.forest-table td.name { font-weight: 700; }
+.forest-table td.total { font-weight: 800; }
+.forest-table td.total small { font-size: 12px; font-weight: 400; color: var(--muted); }
+.forest-table tbody tr { cursor: pointer; }
+.toast { font-weight: 600; font-size: 15px; }
+.slot-n { font-weight: 700; }
+.row.done .badge { font-weight: 700; font-size: 13px; }
+
+/* 나무 주인 선택 */
+.who-row { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 6px; font-size: 13px; color: var(--muted); }
+.who-row select {
+  font: inherit; color: var(--fg); background: var(--panel-2); border: 1.5px solid var(--line);
+  border-radius: 10px; padding: 4px 8px;
+}
+.wk-label { font-size: 12px; font-weight: 700; fill: var(--fg); opacity: .55; font-family: var(--font-body); }
+.wk-label.sel { opacity: 1; }
+.row-hl { fill: #fff; opacity: .22; }
+.legend { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.legend li { flex-direction: column; gap: 2px; padding: 6px 2px; border-radius: 10px; font-size: 12px; text-align: center; }
+.legend li span { white-space: nowrap; }
+.legend li.sel { background: var(--panel-2); font-weight: 700; }
+.slots.one { grid-template-columns: minmax(0, 1fr); max-width: 320px; }
+
+/* 월 선택 */
+.months { display: inline-flex; gap: 4px; padding: 4px; margin: 2px 0 8px; background: var(--panel); border: 2px solid var(--line); border-radius: 14px; }
+.months button { border: 0; background: transparent; border-radius: 10px; padding: 6px 18px; font-weight: 700; font-size: 15px; color: var(--muted); }
+.months button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.tree-wrap { margin-top: 2px; }
+.login-err { margin: 10px 0 0; color: #C0392B; font-size: 13px; font-weight: 600; }

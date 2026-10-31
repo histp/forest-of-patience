@@ -4,9 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>인내의 숲</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -29,15 +27,15 @@
         <circle cx="38" cy="66" r="7" fill="#8E5BD6"/>
         <circle cx="84" cy="64" r="7" fill="#F08A24"/>
       </svg>
-      <p class="eyebrow">11월 섬김 챌린지</p>
+      <p class="eyebrow">11·12월 섬김 챌린지</p>
       <h1 class="title">인내의 숲</h1>
-      <p class="lead">이름만 입력하면 시작! 내 일정을 적고 체크해서<br>한 줄을 다 채우면 나무에 스티커가 붙어요.</p>
+      <p class="lead">이름만 입력하면 시작! 내 일정을 적고 체크해서<br>한 줄을 다 채우면 나만의 나무에 스티커가 붙어요.</p>
       <form id="loginForm" class="login" autocomplete="off">
         <label for="nameInput" class="sr-only">이름</label>
         <input id="nameInput" name="name" maxlength="12" placeholder="이름을 입력하세요" required>
         <button type="submit" class="btn-game">숲에 들어가기</button>
       </form>
-      <div class="quick" id="quickNames" aria-label="빠른 선택"></div>
+      <p class="login-err" id="loginErr" role="alert" hidden></p>
       <p class="mode" id="modeStart"></p>
     </div>
   </section>
@@ -53,38 +51,27 @@
       </div>
     </header>
 
+    <div class="months" id="monthTabs" role="group" aria-label="월 선택"></div>
     <nav class="weeks" id="weekTabs" role="tablist" aria-label="주차 선택"></nav>
 
     <main class="board">
       <section class="panel tree-panel" aria-labelledby="treeTitle">
         <div class="panel-head">
-          <h2 id="treeTitle">나무 스티커판</h2>
+          <h2 id="treeTitle">나의 나무</h2>
           <span class="count" id="treeCount"></span>
         </div>
-        <div class="tree-wrap"><svg id="treeSvg" viewBox="0 0 400 440" role="img" aria-label="이번 주 나무 스티커판"></svg></div>
-        <ul class="legend" id="legend"></ul>
+        <div class="tree-wrap"><svg id="treeSvg" viewBox="0 0 400 440" role="img" aria-label="나의 나무 스티커판"></svg></div>
       </section>
 
       <section class="panel sched-panel" aria-labelledby="schedTitle">
         <div class="panel-head">
-          <h2 id="schedTitle">스케줄</h2>
-          <div class="seg" role="group" aria-label="보기">
-            <button type="button" data-filter="mine" id="fMine">내 것만</button>
-            <button type="button" data-filter="all" id="fAll">전체</button>
-          </div>
+          <h2 id="schedTitle">나의 스케줄</h2>
         </div>
-        <p class="hint">날짜를 눌러 시간을 정하고, 끝나면 동그라미를 눌러 체크하세요. 세 칸이 모두 체크되면 스티커가 지급돼요.</p>
+        <p class="hint">날짜를 눌러 시간을 정하고, 끝나면 동그라미를 눌러 체크하세요. 칸이 모두 체크되면 내 나무에 스티커가 지급돼요. 마사지 섬김은 한 번만 체크하면 돼요.</p>
         <div id="groups"></div>
       </section>
     </main>
 
-    <section class="panel forest-panel" aria-labelledby="forestTitle">
-      <div class="panel-head">
-        <h2 id="forestTitle">숲 현황</h2>
-        <span class="count" id="forestCount"></span>
-      </div>
-      <div class="table-scroll"><table class="forest-table" id="forestTable"></table></div>
-    </section>
   </section>
 
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>

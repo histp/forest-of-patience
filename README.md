@@ -74,8 +74,8 @@ https://app.netlify.com/drop 에 이 폴더를 통째로 끌어다 놓기.
 ## 바꾸고 싶을 때
 
 - **항목(청소 목록)**: `app.js`의 `TASKS` 배열 수정. `g`는 색깔 그룹(red/orange/yellow/green/blue/purple).
-- **담당자 이름**: 앱 화면에서 그룹 이름 칸을 눌러 바로 수정(주차별로 따로 저장).
-- **주차 날짜**: `app.js`의 `WEEKS` 배열.
+- **참여자 이름·순서**: `app.js`의 `PEOPLE` 배열 (1주차 빨강→보라 담당 순서). 매주 명단이 한 칸씩 위로 올라가며 자동 로테이션.
+- **주차 날짜·월 추가**: `app.js`의 `WEEKS` 배열 (n을 이어서 붙이면 로테이션도 이어서 돌아요).
 - **처음부터 다시**: Firebase 콘솔에서 `forest` 노드를 삭제하면 다음 접속 때 초기 데이터로 다시 채워집니다.
 
 ## 데이터 구조
@@ -84,6 +84,5 @@ https://app.netlify.com/drop 에 이 폴더를 통째로 끌어다 놓기.
 forest/
   meta/                       초기화 여부
   players/{이름}              접속한 사람 기록
-  weeks/w1/groups/{색}        그 주 담당자 이름
   weeks/w1/rows/{항목}/s1     { dt: "2026-10-26T13:40", done: true, by: "체크한 사람" }
 ```
