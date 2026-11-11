@@ -56,52 +56,47 @@ const TASKS = [
   { id: "t22", g: "purple", name: "마사지 섬김 (제인집사님)", once: true }
 ];
 
-// n = 전체 주차 번호(로테이션 기준, 데이터 저장 키 w1~w10), k = 그 달의 몇 주차
-// 12월은 11월 5주차 다음 순서를 그대로 이어서 돕니다.
+// n = 노션 기준 주차 번호(로테이션 기준, 데이터 저장 키), k = 그 달의 몇 주차
+// 챌린지는 11월 4주차(n=4)부터 시작. 12주 = 로테이션 두 바퀴 = 모두 정확히 스티커 32개.
+// 그 달 1일이 들어 있는 주가 1주차.
 const WEEKS = [
-  { n: 1,  m: "11월", k: 1, range: "10/26 – 11/1",  start: "2026-10-26" },
-  { n: 2,  m: "11월", k: 2, range: "11/2 – 11/8",   start: "2026-11-02" },
-  { n: 3,  m: "11월", k: 3, range: "11/9 – 11/15",  start: "2026-11-09" },
   { n: 4,  m: "11월", k: 4, range: "11/16 – 11/22", start: "2026-11-16" },
   { n: 5,  m: "11월", k: 5, range: "11/23 – 11/29", start: "2026-11-23" },
   { n: 6,  m: "12월", k: 1, range: "11/30 – 12/6",  start: "2026-11-30" },
   { n: 7,  m: "12월", k: 2, range: "12/7 – 12/13",  start: "2026-12-07" },
   { n: 8,  m: "12월", k: 3, range: "12/14 – 12/20", start: "2026-12-14" },
   { n: 9,  m: "12월", k: 4, range: "12/21 – 12/27", start: "2026-12-21" },
-  { n: 10, m: "12월", k: 5, range: "12/28 – 1/3",   start: "2026-12-28" }
+  { n: 10, m: "1월",  k: 1, range: "12/28 – 1/3",   start: "2026-12-28" },
+  { n: 11, m: "1월",  k: 2, range: "1/4 – 1/10",    start: "2027-01-04" },
+  { n: 12, m: "1월",  k: 3, range: "1/11 – 1/17",   start: "2027-01-11" },
+  { n: 13, m: "1월",  k: 4, range: "1/18 – 1/24",   start: "2027-01-18" },
+  { n: 14, m: "1월",  k: 5, range: "1/25 – 1/31",   start: "2027-01-25" },
+  { n: 15, m: "2월",  k: 1, range: "2/1 – 2/7",     start: "2027-02-01" }
 ];
 const MONTHS = [...new Set(WEEKS.map(w => w.m))];
 
-// 1주차는 노션에 이미 적혀 있던 일정·체크를 그대로 옮겨 둡니다. [시간, 완료여부]
-const SEED_W1 = {
-  t01: [["2026-10-26T13:40", 0], ["2026-10-28T13:40", 0], ["2026-10-30T13:40", 0]],
-  t02: [["2026-10-28T13:40", 0], ["2026-10-28T13:40", 0], ["2026-10-30T13:40", 0]],
-  t03: [["2026-10-30T13:40", 0], ["2026-10-28T13:40", 0], ["2026-10-30T13:40", 0]],
-  t04: [["2026-10-26T21:00", 0]],
-  t12: [["2026-10-26T13:45", 0], ["2026-10-28T13:45", 0], ["2026-10-30T13:45", 0]],
-  t13: [["2026-10-26T13:45", 0], ["2026-10-28T13:45", 0], ["2026-10-30T13:45", 0]],
-  t14: [["2026-10-26T13:45", 0], ["2026-10-28T13:45", 0], ["2026-10-30T13:45", 0]],
-  t15: [["2026-10-29T19:30", 0]],
-  t16: [[null, 1]],
-  t17: [[null, 1]],
-  t19: [["2026-10-26T11:10", 1], ["2026-10-28T13:30", 1], ["2026-10-30T13:30", 0]],
-  t20: [["2026-10-26T13:30", 1], ["2026-10-28T13:30", 1], ["2026-10-30T13:30", 0]],
-  t21: [["2026-10-26T13:30", 0], ["2026-10-28T13:30", 0], ["2026-10-30T13:30", 0]],
-  t22: [["2026-10-29T17:30", 0]]
-};
+// 11월 4주차부터 새로 시작하므로 미리 채워 둘 기록은 없습니다.
+const SEED_W1 = {};
+const DATA_VERSION = 3;
 
 function buildSeed() {
   const rows = {};
-  Object.entries(SEED_W1).forEach(([tid, slots]) => {
+  Object.entries(SEED_W1).forEach(([tid, nums]) => {
     rows[tid] = {};
-    slots.forEach(([dt, done], i) => {
-      const s = {};
-      if (dt) s.dt = dt;
-      if (done) s.done = true;
-      if (Object.keys(s).length) rows[tid]["s" + (i + 1)] = s;
-    });
+    nums.forEach(n => { rows[tid]["s" + n] = { done: true }; });
   });
-  return { meta: { seededAt: Date.now(), version: 2 }, weeks: { w1: { rows } } };
+  return { meta: { seededAt: Date.now(), version: DATA_VERSION }, weeks: { w1: { rows } } };
+}
+
+// 저장된 일정 시간(dt)을 모두 지우는 경로 목록 (체크는 그대로)
+function clearTimePaths(weeks) {
+  const up = {};
+  Object.entries(weeks || {}).forEach(([wk, wd]) =>
+    Object.entries((wd && wd.rows) || {}).forEach(([tid, row]) =>
+      Object.entries(row || {}).forEach(([sk, slot]) => {
+        if (slot && slot.dt) up[`weeks/${wk}/rows/${tid}/${sk}/dt`] = null;
+      })));
+  return up;
 }
 
 /* =========================================================
@@ -144,6 +139,13 @@ const Store = (() => {
         const ref = db.ref(ROOT);
         // 처음 한 번만 노션 데이터로 채우기 (동시에 여러 명이 열어도 한 번만)
         await ref.transaction(cur => (cur && cur.meta) ? undefined : Object.assign({}, cur || {}, buildSeed()));
+        // 한 번만: 예전에 들어간 일정 시간을 모두 비우기
+        const mig = await ref.child("meta/version").transaction(v => (v || 0) < DATA_VERSION ? DATA_VERSION : undefined);
+        if (mig.committed) {
+          const wsnap = await ref.child("weeks").get();
+          const up = clearTimePaths(wsnap.val());
+          if (Object.keys(up).length) await ref.update(up);
+        }
         ref.on("value", snap => emit(snap.val()));
         db.ref(".info/connected").on("value", s => emitConn(!!s.val()));
         return mode;
@@ -159,6 +161,10 @@ const Store = (() => {
     mode = "demo";
     local = readLocal();
     if (!local || !local.meta) { local = buildSeed(); writeLocal(); }
+    if ((local.meta.version || 0) < DATA_VERSION) {
+      Object.keys(clearTimePaths(local.weeks)).forEach(p => setIn(local, p.split("/"), null));
+      local.meta.version = DATA_VERSION; writeLocal();
+    }
     window.addEventListener("storage", e => {
       if (e.key === LS_DATA) { local = readLocal() || local; emit(local); }
     });
@@ -204,7 +210,7 @@ function pickCurrentWeek() {
   for (let i = WEEKS.length - 1; i >= 0; i--) {
     if (now >= new Date(WEEKS[i].start + "T00:00:00")) return WEEKS[i].n;
   }
-  return 1;
+  return WEEKS[0].n;   // 시작 전에는 첫 주(11월 4주차)를 보여줌
 }
 
 /* 로테이션: w주차에 그룹 gi를 맡는 사람 / 사람 p가 맡는 그룹 */
@@ -268,9 +274,9 @@ function renderTabs() {
 }
 
 /* ---------- 나만의 나무 ----------
-   11월부터 12월까지 한 나무를 계속 키웁니다.
-   스티커 자리 = 전체 주차 동안 맡은 항목 수(마사지 섬김 제외).
-   1주차 항목부터 아래쪽에서 위로 차곡차곡 붙어요.                       */
+   11월부터 한 나무를 계속 키웁니다. 나무는 32칸 고정.
+   받은 스티커(마사지 섬김 제외)가 아래쪽부터 위로 차곡차곡 붙어요.      */
+const TREE_SIZE = 32;
 const TREE_ROWS = [ // [y, 그 줄에 들어가는 최대 개수]  (아래 → 위)
   [258, 5], [222, 7], [186, 8], [150, 8], [114, 7], [78, 5], [44, 3]
 ];
@@ -294,35 +300,35 @@ function treePositions(count) {
 
 function renderTree() {
   const who = ME;
-  const R = 14, C = 2 * Math.PI * R;
-  const items = [];
-  WEEKS.forEach(w => stickerTasksOf(w.n, who).forEach(t => items.push({ w: w.n, t })));
-  const pos = treePositions(items.length);
-  let slots = "", filled = 0;
+  const R = 14;
+  const earned = [];
+  WEEKS.forEach(w => stickerTasksOf(w.n, who).forEach(t => { if (isDone(w.n, t)) earned.push({ w: w.n, t }); }));
+  const pos = treePositions(TREE_SIZE);
+  let slots = "";
 
-  items.forEach(({ w, t }, i) => {
-    const [x, y] = pos[i];
-    const g = GROUPS[groupIdx(t.g)];
-    const k = doneCount(w, t), n = slotCount(t);
-    const key = `${w}:${t.id}`;
-    let inner;
-    if (k === n) {
-      filled++;
+  pos.forEach(([x, y], i) => {
+    const e = earned[i];
+    let inner, tip;
+    if (e) {
+      const g = GROUPS[groupIdx(e.t.g)];
       inner = `<circle r="16" fill="${g.color}"/>
         <circle r="16" class="stk-ring" opacity=".5"/>
         <ellipse cx="-5" cy="-6" rx="5" ry="3.5" class="stk-shine"/>
         <path d="M1 -15 C4 -24 12 -25 15 -21 C11 -17 5 -14 1 -15 Z" class="stk-leaf"/>`;
+      tip = `${monthOf(e.w)} ${WEEKS.find(w => w.n === e.w).k}주차 · ${e.t.name}`;
     } else {
-      inner = `<circle r="${R}" class="slot-empty"/>` +
-        (k ? `<circle r="${R}" class="slot-prog" stroke="${g.color}" stroke-dasharray="${(C * k / n).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90)"/>` : "");
+      inner = `<circle r="${R}" class="slot-empty"/>`;
+      tip = `${i + 1}번째 칸`;
     }
+    const key = e ? `${e.w}:${e.t.id}` : "";
     slots += `<g transform="translate(${x.toFixed(1)} ${y})">
-      <title>${esc(t.name)} · ${k}/${n}</title>
-      <g class="slot-in${popKeys.has(key) ? " pop" : ""}">${inner}</g></g>`;
+      <title>${esc(tip)}</title>
+      <g class="slot-in${key && popKeys.has(key) ? " pop" : ""}">${inner}</g></g>`;
   });
 
-  const total = items.length;
-  const allDone = total > 0 && filled === total;
+  const filled = Math.min(earned.length, TREE_SIZE);
+  const total = TREE_SIZE;
+  const allDone = filled >= total;
   const star = allDone ? `<polygon class="tree-star" points="${starPoints(200, 14, 16, 7)}"/>` : "";
 
   $("#treeSvg").innerHTML = `
@@ -436,7 +442,7 @@ function onDataChange(d) {
       popKeys.add(k);
       toast(`내 나무에 스티커! · ${t.name}`);
       const s = personStats(who);
-      if (s.done === s.total) setTimeout(() => toast(`나무가 완성됐어요! 수고했어요`), 1400);
+      if (s.done === TREE_SIZE) setTimeout(() => toast(`나무가 완성됐어요! 수고했어요`), 1400);
     });
   }
   prevDone = now;
