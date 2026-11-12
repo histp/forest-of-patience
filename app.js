@@ -56,39 +56,44 @@ const TASKS = [
   { id: "t22", g: "purple", name: "마사지 섬김 (제인집사님)", once: true }
 ];
 
-// n = 노션 기준 주차 번호(로테이션 기준, 데이터 저장 키), k = 그 달의 몇 주차
-// 챌린지는 11월 4주차(n=4)부터 시작. 12주 = 로테이션 두 바퀴 = 모두 정확히 스티커 32개.
-// 그 달 1일이 들어 있는 주가 1주차.
-const WEEKS = [
-  { n: 4,  m: "11월", k: 4, range: "11/16 – 11/22", start: "2026-11-16" },
-  { n: 5,  m: "11월", k: 5, range: "11/23 – 11/29", start: "2026-11-23" },
-  { n: 6,  m: "12월", k: 1, range: "11/30 – 12/6",  start: "2026-11-30" },
-  { n: 7,  m: "12월", k: 2, range: "12/7 – 12/13",  start: "2026-12-07" },
-  { n: 8,  m: "12월", k: 3, range: "12/14 – 12/20", start: "2026-12-14" },
-  { n: 9,  m: "12월", k: 4, range: "12/21 – 12/27", start: "2026-12-21" },
-  { n: 10, m: "1월",  k: 1, range: "12/28 – 1/3",   start: "2026-12-28" },
-  { n: 11, m: "1월",  k: 2, range: "1/4 – 1/10",    start: "2027-01-04" },
-  { n: 12, m: "1월",  k: 3, range: "1/11 – 1/17",   start: "2027-01-11" },
-  { n: 13, m: "1월",  k: 4, range: "1/18 – 1/24",   start: "2027-01-18" },
-  { n: 14, m: "1월",  k: 5, range: "1/25 – 1/31",   start: "2027-01-25" },
-  { n: 15, m: "2월",  k: 1, range: "2/1 – 2/7",     start: "2027-02-01" }
-];
-const MONTHS = [...new Set(WEEKS.map(w => w.m))];
+/* ---------- 주차 ----------
+   리뉴얼 시작: 11월 4주차(2026-11-16, 월요일). 이후 주차는 날짜로 자동 생성돼요.
+   n = 노션 기준 주차 번호(로테이션 기준, 데이터 저장 키 w4, w5 …)
+   그 달 1일이 들어 있는 주가 1주차 (= 그 주 일요일이 속한 달).               */
+const START_DATE = "2026-11-16";
+const START_N = 4;
+const WEEKS_AHEAD = 52;              // 시작부터 1년치 주차를 만들어 둠
 
-// 11월 4주차부터 새로 시작하므로 미리 채워 둘 기록은 없습니다.
-const SEED_W1 = {};
+/* ---------- 나무 크기 ---------- */
+const TREE_SIZE = 32;                // 인내의 숲 나무 (청소·정리 항목)
+const MASSAGE_TREE_SIZE = 12;        // 마사지 섬김 나무 (일주일에 1개)
+
+function buildWeeks() {
+  const out = [];
+  const base = new Date(START_DATE + "T00:00:00");
+  const md = d => `${d.getMonth() + 1}/${d.getDate()}`;
+  for (let i = 0; i < WEEKS_AHEAD; i++) {
+    const s = new Date(base); s.setDate(base.getDate() + i * 7);
+    const e = new Date(s); e.setDate(s.getDate() + 6);
+    out.push({
+      n: START_N + i,
+      m: `${e.getMonth() + 1}월`,
+      k: Math.ceil(e.getDate() / 7),
+      range: `${md(s)} – ${md(e)}`,
+      start: s,
+      end: e
+    });
+  }
+  return out;
+}
+const WEEKS = buildWeeks();
+
 const DATA_VERSION = 3;
-
 function buildSeed() {
-  const rows = {};
-  Object.entries(SEED_W1).forEach(([tid, nums]) => {
-    rows[tid] = {};
-    nums.forEach(n => { rows[tid]["s" + n] = { done: true }; });
-  });
-  return { meta: { seededAt: Date.now(), version: DATA_VERSION }, weeks: { w1: { rows } } };
+  return { meta: { seededAt: Date.now(), version: DATA_VERSION } };
 }
 
-// 저장된 일정 시간(dt)을 모두 지우는 경로 목록 (체크는 그대로)
+// 저장된 일정 시간(dt)을 모두 지우는 경로 목록 (체크는 그대로) — 한 번만 실행
 function clearTimePaths(weeks) {
   const up = {};
   Object.entries(weeks || {}).forEach(([wk, wd]) =>
@@ -195,20 +200,21 @@ const Store = (() => {
 let DATA = {};
 let ME = "";
 let WEEK = pickCurrentWeek();
-let MONTH = WEEKS.find(w => w.n === WEEK).m;
 let ready = false;
 let prevDone = null;     // 직전 스티커 상태 (새로 붙은 스티커 감지용)
 let popKeys = new Set();
+let scrollTabs = true;   // 주차 탭을 선택된 주로 스크롤할지
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const keyOf = name => name.trim().replace(/[.#$\[\]\/]/g, "_");
 const mod = (a, n) => ((a % n) + n) % n;
+const weekOf = n => WEEKS.find(w => w.n === n);
 
 function pickCurrentWeek() {
   const now = new Date();
   for (let i = WEEKS.length - 1; i >= 0; i--) {
-    if (now >= new Date(WEEKS[i].start + "T00:00:00")) return WEEKS[i].n;
+    if (now >= WEEKS[i].start) return WEEKS[i].n;
   }
   return WEEKS[0].n;   // 시작 전에는 첫 주(11월 4주차)를 보여줌
 }
@@ -220,17 +226,42 @@ const groupIndexOf = (w, name) => {
   return p < 0 ? -1 : mod(p - (w - 1), GROUPS.length);
 };
 const groupIdx = gid => GROUPS.findIndex(g => g.id === gid);
-const taskOwner = (w, t) => assigneeOf(w, groupIdx(t.g));
 const tasksOfGroup = gi => TASKS.filter(t => t.g === GROUPS[gi].id);
 const tasksOf = (w, name) => { const gi = groupIndexOf(w, name); return gi < 0 ? [] : tasksOfGroup(gi); };
+const taskOwner = (w, t) => assigneeOf(w, groupIdx(t.g));
 
 const weekData = w => (DATA.weeks && DATA.weeks["w" + w]) || {};
 const rowOf = (w, t) => (weekData(w).rows || {})[t] || {};
 const slotOf = (row, n) => row["s" + n] || {};
-const slotCount = t => t.once ? 1 : 3;
 const slotNums = t => t.once ? [1] : [1, 2, 3];
+const slotCount = t => slotNums(t).length;
 const doneCount = (w, t) => slotNums(t).filter(n => slotOf(rowOf(w, t.id), n).done).length;
 const isDone = (w, t) => doneCount(w, t) === slotCount(t);
+// 항목이 완료된 시각 = 마지막으로 체크한 칸의 시각
+const doneAt = (w, t) => Math.max(0, ...slotNums(t).map(n => slotOf(rowOf(w, t.id), n).at || 0));
+
+/* 나무 두 그루: 인내의 숲(청소·정리 항목) / 마사지 섬김 */
+const TREES = {
+  main:    { size: TREE_SIZE,         title: "인내의 숲 나무",  match: t => !t.once },
+  massage: { size: MASSAGE_TREE_SIZE, title: "마사지 섬김 나무", match: t => !!t.once }
+};
+const treeOfTask = t => t.once ? "massage" : "main";
+
+// 받은 스티커를 완료한 순서대로
+function earnedList(name, kind) {
+  const out = [];
+  WEEKS.forEach(w => tasksOf(w.n, name).filter(TREES[kind].match).forEach(t => {
+    if (isDone(w.n, t)) out.push({ w: w.n, t, at: doneAt(w.n, t), i: TASKS.indexOf(t) });
+  }));
+  out.sort((a, b) => (a.at - b.at) || (a.w - b.w) || (a.i - b.i));
+  return out;
+}
+
+function stickerSet() {
+  const s = new Set();
+  WEEKS.forEach(w => TASKS.forEach(t => { if (isDone(w.n, t)) s.add(`${w.n}:${t.id}`); }));
+  return s;
+}
 
 const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
 function fmtDT(v) {
@@ -242,112 +273,102 @@ function fmtDT(v) {
   return `${d.getMonth() + 1}/${d.getDate()}(${DAYS[d.getDay()]}) ${ap} ${h}:${m}`;
 }
 
-/* 스티커 규칙: 한 주에 맡은 항목 1개당 스티커 1개 (마사지 섬김은 스티커 없음) */
-const isSticker = t => !t.once;
-const stickerTasksOf = (w, name) => tasksOf(w, name).filter(isSticker);
-function stickerSet() {
-  const s = new Set();
-  WEEKS.forEach(w => TASKS.filter(isSticker).forEach(t => { if (isDone(w.n, t)) s.add(`${w.n}:${t.id}`); }));
-  return s;
-}
-const monthWeeks = (m = MONTH) => WEEKS.filter(w => w.m === m);
-const monthOf = n => WEEKS.find(w => w.n === n).m;
-function personStats(name, weeks = WEEKS) {
-  let done = 0, total = 0;
-  weeks.forEach(w => stickerTasksOf(w.n, name).forEach(t => { total++; if (isDone(w.n, t)) done++; }));
-  return { done, total };
-}
-
 /* =========================================================
    렌더링
    ========================================================= */
-
 function renderTabs() {
-  $("#monthTabs").innerHTML = MONTHS.map(m =>
-    `<button type="button" data-month="${m}" aria-pressed="${m === MONTH}">${m}</button>`).join("");
-  $("#weekTabs").innerHTML = monthWeeks().map(w => {
-    const mine = stickerTasksOf(w.n, ME);
-    const sub = `내 스티커 ${mine.filter(t => isDone(w.n, t)).length}/${mine.length}`;
-    return `<button type="button" role="tab" aria-selected="${w.n === WEEK}" data-week="${w.n}">
-      <b>${w.k}주차</b><small>${w.range} · ${sub}</small></button>`;
+  const cur = pickCurrentWeek();
+  $("#weekTabs").innerHTML = WEEKS.map(w => {
+    const mine = tasksOf(w.n, ME);
+    const main = mine.filter(t => !t.once), ms = mine.filter(t => t.once);
+    const d = main.filter(t => isDone(w.n, t)).length + ms.filter(t => isDone(w.n, t)).length;
+    const all = main.length + ms.length;
+    return `<button type="button" role="tab" aria-selected="${w.n === WEEK}" data-week="${w.n}" class="${w.n === cur ? "now" : ""}${d === all && all ? " full" : ""}">
+      <b>${w.m} ${w.k}주차</b><small>${w.range} · ${d}/${all}</small></button>`;
   }).join("");
+  if (scrollTabs) {
+    const sel = $("#weekTabs [aria-selected='true']");
+    if (sel) sel.scrollIntoView({ block: "nearest", inline: "center" });
+    scrollTabs = false;
+  }
 }
 
-/* ---------- 나만의 나무 ----------
-   11월부터 한 나무를 계속 키웁니다. 나무는 32칸 고정.
-   받은 스티커(마사지 섬김 제외)가 아래쪽부터 위로 차곡차곡 붙어요.      */
-const TREE_SIZE = 32;
-const TREE_ROWS = [ // [y, 그 줄에 들어가는 최대 개수]  (아래 → 위)
-  [258, 5], [222, 7], [186, 8], [150, 8], [114, 7], [78, 5], [44, 3]
-];
-const SLOT_GAP = 38;
-
-// 스티커 수에 맞춰 줄마다 고르게 나눠서 나무 전체에 퍼지게 배치
-function treePositions(count) {
-  const capSum = TREE_ROWS.reduce((a, r) => a + r[1], 0);
-  const n = Math.min(count, capSum);
-  const raw = TREE_ROWS.map(([, cap]) => cap * n / capSum);
-  const per = raw.map(Math.floor);
-  let left = n - per.reduce((a, b) => a + b, 0);
-  raw.map((v, i) => [v - per[i], i]).sort((a, b) => b[0] - a[0])
-    .forEach(([, i]) => { if (left > 0 && per[i] < TREE_ROWS[i][1]) { per[i]++; left--; } });
-  const pts = [];
-  TREE_ROWS.forEach(([y], r) => {
-    for (let i = 0; i < per[r]; i++) pts.push([200 + (i - (per[r] - 1) / 2) * SLOT_GAP, y]);
-  });
-  return pts;
+/* ---------- 스티커판 자리 ----------
+   1번 칸은 맨 위 왼쪽, 왼쪽 → 오른쪽, 위 → 아래 순서로 채워져요.          */
+const LAYOUTS = {
+  // [y, 그 줄 칸 수]
+  32: { gap: 38, r: 14, rows: [[48, 3], [84, 4], [120, 5], [156, 6], [192, 6], [228, 5], [264, 3]] },
+  12: { gap: 50, r: 18, rows: [[64, 2], [116, 3], [168, 4], [222, 3]] }
+};
+function layoutFor(size) {
+  if (LAYOUTS[size]) return LAYOUTS[size];
+  // 다른 크기로 바꿨을 때: 32칸 배치를 기준으로 줄마다 고르게 나눔
+  const base = LAYOUTS[32], cap = base.rows.reduce((a, r) => a + r[1], 0);
+  const per = base.rows.map(([, c]) => Math.floor(c * size / cap));
+  let left = size - per.reduce((a, b) => a + b, 0);
+  for (let i = Math.floor(per.length / 2); left > 0; i = (i + 1) % per.length) { per[i]++; left--; }
+  return { gap: base.gap, r: base.r, rows: base.rows.map(([y], i) => [y, per[i]]) };
+}
+function slotPositions(size) {
+  const L = layoutFor(size), pts = [];
+  L.rows.forEach(([y, c]) => { for (let i = 0; i < c; i++) pts.push([200 + (i - (c - 1) / 2) * L.gap, y]); });
+  return { pts, r: L.r };
 }
 
-function renderTree() {
-  const who = ME;
-  const R = 14;
-  const earned = [];
-  WEEKS.forEach(w => stickerTasksOf(w.n, who).forEach(t => { if (isDone(w.n, t)) earned.push({ w: w.n, t }); }));
-  const pos = treePositions(TREE_SIZE);
+const TREE_ART = `
+  <ellipse cx="200" cy="424" rx="170" ry="13" class="t-ground"/>
+  <path d="M178 424 C184 370 182 330 172 292 L228 292 C218 330 216 370 222 424 Z" class="t-trunk"/>
+  <path d="M190 312 C170 296 150 282 128 262" class="t-branch"/>
+  <path d="M210 312 C232 294 252 280 274 258" class="t-branch"/>
+  <circle cx="112" cy="198" r="84" class="t-canopy2"/>
+  <circle cx="288" cy="198" r="84" class="t-canopy2"/>
+  <circle cx="200" cy="248" r="80" class="t-canopy2"/>
+  <circle cx="200" cy="165" r="126" class="t-canopy"/>
+  <circle cx="146" cy="100" r="78" class="t-canopy"/>
+  <circle cx="254" cy="100" r="78" class="t-canopy"/>
+  <circle cx="200" cy="68" r="66" class="t-canopy"/>`;
+
+function renderTree(kind) {
+  const T = TREES[kind];
+  const earned = earnedList(ME, kind);
+  // 한 그루를 다 채우면 다음 나무로
+  const treeNo = earned.length === 0 ? 1 : Math.ceil(earned.length / T.size);
+  const onTree = earned.slice((treeNo - 1) * T.size, treeNo * T.size);
+  const { pts, r } = slotPositions(T.size);
+  const s = r / 16;   // 스티커 크기 배율
+
   let slots = "";
-
-  pos.forEach(([x, y], i) => {
-    const e = earned[i];
+  pts.forEach(([x, y], i) => {
+    const e = onTree[i];
     let inner, tip;
     if (e) {
       const g = GROUPS[groupIdx(e.t.g)];
-      inner = `<circle r="16" fill="${g.color}"/>
-        <circle r="16" class="stk-ring" opacity=".5"/>
-        <ellipse cx="-5" cy="-6" rx="5" ry="3.5" class="stk-shine"/>
-        <path d="M1 -15 C4 -24 12 -25 15 -21 C11 -17 5 -14 1 -15 Z" class="stk-leaf"/>`;
-      tip = `${monthOf(e.w)} ${WEEKS.find(w => w.n === e.w).k}주차 · ${e.t.name}`;
+      const R = r + 2;
+      inner = `<circle r="${R}" fill="${g.color}"/>
+        <circle r="${R}" class="stk-ring" opacity=".5"/>
+        <ellipse cx="${-5 * s}" cy="${-6 * s}" rx="${5 * s}" ry="${3.5 * s}" class="stk-shine"/>
+        <path d="M1 -15 C4 -24 12 -25 15 -21 C11 -17 5 -14 1 -15 Z" transform="scale(${(R / 16).toFixed(2)})" class="stk-leaf"/>`;
+      const w = weekOf(e.w);
+      tip = `${i + 1}번째 · ${w.m} ${w.k}주차 · ${e.t.name}`;
     } else {
-      inner = `<circle r="${R}" class="slot-empty"/>`;
+      inner = `<circle r="${r}" class="slot-empty"/>
+        <text class="slot-num" text-anchor="middle" dy="0.35em" font-size="${(r * 0.8).toFixed(1)}">${i + 1}</text>`;
       tip = `${i + 1}번째 칸`;
     }
     const key = e ? `${e.w}:${e.t.id}` : "";
-    slots += `<g transform="translate(${x.toFixed(1)} ${y})">
-      <title>${esc(tip)}</title>
+    slots += `<g transform="translate(${x.toFixed(1)} ${y})"><title>${esc(tip)}</title>
       <g class="slot-in${key && popKeys.has(key) ? " pop" : ""}">${inner}</g></g>`;
   });
 
-  const filled = Math.min(earned.length, TREE_SIZE);
-  const total = TREE_SIZE;
-  const allDone = filled >= total;
-  const star = allDone ? `<polygon class="tree-star" points="${starPoints(200, 14, 16, 7)}"/>` : "";
+  const filled = onTree.length;
+  const full = filled >= T.size;
+  const star = full ? `<polygon class="tree-star" points="${starPoints(200, 14, 16, 7)}"/>` : "";
 
-  $("#treeSvg").innerHTML = `
-    <ellipse cx="200" cy="424" rx="170" ry="13" class="t-ground"/>
-    <path d="M178 424 C184 370 182 330 172 292 L228 292 C218 330 216 370 222 424 Z" class="t-trunk"/>
-    <path d="M190 312 C170 296 150 282 128 262" class="t-branch"/>
-    <path d="M210 312 C232 294 252 280 274 258" class="t-branch"/>
-    <circle cx="112" cy="198" r="84" class="t-canopy2"/>
-    <circle cx="288" cy="198" r="84" class="t-canopy2"/>
-    <circle cx="200" cy="248" r="80" class="t-canopy2"/>
-    <circle cx="200" cy="165" r="126" class="t-canopy"/>
-    <circle cx="146" cy="100" r="78" class="t-canopy"/>
-    <circle cx="254" cy="100" r="78" class="t-canopy"/>
-    <circle cx="200" cy="68" r="66" class="t-canopy"/>
-    ${slots}${star}`;
-
-  $("#treeTitle").textContent = "나의 나무";
-  $("#treeCount").innerHTML = allDone ? `<b>완성!</b> ${filled}/${total}` : `<b>${filled}</b>/${total} 스티커`;
-  $("#treeSvg").setAttribute("aria-label", `${who}의 나무 스티커판, ${total}칸 중 ${filled}개 붙음`);
+  const svg = $(`#tree-${kind}`);
+  svg.innerHTML = TREE_ART + slots + star;
+  svg.setAttribute("aria-label", `${T.title}, ${T.size}칸 중 ${filled}개 붙음`);
+  $(`#tree-${kind}-title`).textContent = treeNo > 1 ? `${T.title} · ${treeNo}번째` : T.title;
+  $(`#tree-${kind}-count`).innerHTML = full ? `<b>완성!</b> ${filled}/${T.size}` : `<b>${filled}</b>/${T.size}`;
 }
 
 function starPoints(cx, cy, R, r) {
@@ -362,51 +383,44 @@ function starPoints(cx, cy, R, r) {
 const CHECK_SVG = `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5 L8.5 15 L16 6"/></svg>`;
 
 function renderGroups() {
-  const myGi = groupIndexOf(WEEK, ME);
-  const list = myGi < 0 ? [] : [myGi];   // 내 항목만
+  const gi = groupIndexOf(WEEK, ME);
+  const w = weekOf(WEEK);
+  $("#schedTitle").textContent = `${w.m} ${w.k}주차 나의 스케줄`;
+  $("#schedRange").textContent = w.range;
+  if (gi < 0) { $("#groups").innerHTML = ""; return; }
 
-  let html = "";
-  list.forEach(gi => {
-    const g = GROUPS[gi];
-    const ts = tasksOfGroup(gi);
-    const name = assigneeOf(WEEK, gi);
-    const st = ts.filter(isSticker);
-    const gd = st.filter(t => isDone(WEEK, t)).length;
-    html += `<div class="group" style="--gc:${g.color}">
-      <div class="group-head">
-        <span class="gname">${esc(name)}</span>
-        ${name === ME ? `<span class="tag-me">나</span>` : ""}
-        <span class="gprog">스티커 ${gd}/${st.length}</span>
+  const g = GROUPS[gi];
+  const ts = tasksOfGroup(gi);
+  let html = `<div class="group" style="--gc:${g.color}">`;
+  ts.forEach(t => {
+    const row = rowOf(WEEK, t.id);
+    const k = doneCount(WEEK, t), n = slotCount(t);
+    const done = k === n;
+    html += `<div class="row${done ? " done" : ""}${t.once ? " massage" : ""}">
+      <div class="row-title"><span>${esc(t.name)}</span>
+        <em class="badge">${done ? (t.once ? "마사지 나무에 스티커" : "스티커 받음") : `${k}/${n}`}</em></div>
+      <div class="slots${t.once ? " one" : ""}">`;
+    slotNums(t).forEach(sn => {
+      const s = slotOf(row, sn);
+      html += `<div class="slot">
+        ${t.once ? "" : `<span class="slot-n">${sn}</span>`}
+        <div class="slot-face${s.dt ? " has" : ""}">
+          ${s.dt ? `<span>${esc(fmtDT(s.dt))}</span>` : `<span class="ph">날짜·시간</span>`}
+          <input type="datetime-local" id="dt-${t.id}-${sn}" class="slot-dt" data-t="${t.id}" data-n="${sn}" value="${esc(s.dt || "")}" aria-label="${esc(t.name)} ${sn}번째 일정">
+          ${s.dt ? `<button type="button" class="slot-clear" data-t="${t.id}" data-n="${sn}" aria-label="일정 지우기">×</button>` : ""}
+        </div>
+        <button type="button" class="chk" id="chk-${t.id}-${sn}" data-t="${t.id}" data-n="${sn}" aria-pressed="${!!s.done}" aria-label="${esc(t.name)} ${sn}번째 완료">${CHECK_SVG}</button>
       </div>`;
-    ts.forEach(t => {
-      const row = rowOf(WEEK, t.id);
-      const k = doneCount(WEEK, t), n = slotCount(t);
-      html += `<div class="row${k === n ? " done" : ""}">
-        <div class="row-title"><span>${esc(t.name)}</span><em class="badge">${k === n ? (isSticker(t) ? "스티커 받음" : "완료") : `${k}/${n}`}</em></div>
-        <div class="slots${t.once ? " one" : ""}">`;
-      slotNums(t).forEach(sn => {
-        const s = slotOf(row, sn);
-        html += `<div class="slot">
-          ${t.once ? "" : `<span class="slot-n">${sn}</span>`}
-          <div class="slot-face${s.dt ? " has" : ""}">
-            ${s.dt ? `<span>${esc(fmtDT(s.dt))}</span>` : `<span class="ph">날짜·시간</span>`}
-            <input type="datetime-local" id="dt-${t.id}-${sn}" class="slot-dt" data-t="${t.id}" data-n="${sn}" value="${esc(s.dt || "")}" aria-label="${esc(t.name)} ${sn}번째 일정">
-            ${s.dt ? `<button type="button" class="slot-clear" data-t="${t.id}" data-n="${sn}" aria-label="일정 지우기">×</button>` : ""}
-          </div>
-          <button type="button" class="chk" id="chk-${t.id}-${sn}" data-t="${t.id}" data-n="${sn}" aria-pressed="${!!s.done}" aria-label="${esc(t.name)} ${sn}번째 완료">${CHECK_SVG}</button>
-        </div>`;
-      });
-      html += `</div></div>`;
     });
-    html += `</div>`;
+    html += `</div></div>`;
   });
+  html += `</div>`;
   $("#groups").innerHTML = html;
 }
 
-
 function renderHud() {
-  const { done } = personStats(ME);
-  $("#meChip").innerHTML = `${esc(ME)} <b>★ ${done}</b>`;
+  const a = earnedList(ME, "main").length, b = earnedList(ME, "massage").length;
+  $("#meChip").innerHTML = `${esc(ME)} <b>★ ${a}</b><i>♥ ${b}</i>`;
 }
 
 function renderModeBadges() {
@@ -420,7 +434,8 @@ function renderModeBadges() {
 
 function renderAll() {
   renderTabs();
-  renderTree();
+  renderTree("main");
+  renderTree("massage");
   renderGroups();
   renderHud();
   popKeys = new Set();
@@ -436,17 +451,15 @@ function onDataChange(d) {
     [...now].filter(k => !prevDone.has(k)).forEach(k => {
       const [w, tid] = k.split(":");
       const t = TASKS.find(x => x.id === tid);
-      const who = taskOwner(+w, t);
-      const m = monthOf(+w);
-      if (who !== ME) return;                       // 내 스티커만 알림
+      if (taskOwner(+w, t) !== ME) return;          // 내 스티커만 알림
       popKeys.add(k);
-      toast(`내 나무에 스티커! · ${t.name}`);
-      const s = personStats(who);
-      if (s.done === TREE_SIZE) setTimeout(() => toast(`나무가 완성됐어요! 수고했어요`), 1400);
+      const kind = treeOfTask(t);
+      toast(`${TREES[kind].title}에 스티커! · ${t.name}`);
+      const n = earnedList(ME, kind).length;
+      if (n > 0 && n % TREES[kind].size === 0) setTimeout(() => toast(`${TREES[kind].title}가 완성됐어요! 수고했어요`), 1400);
     });
   }
   prevDone = now;
-
   if (ready) renderAll();
 }
 
@@ -476,6 +489,8 @@ function login(name) {
   ME = name;
   try { localStorage.setItem(LS_ME, ME); } catch (e) {}
   Store.set(`players/${keyOf(ME)}`, { name: ME, lastSeen: Date.now() });
+  WEEK = pickCurrentWeek();
+  scrollTabs = true;
   $("#start").hidden = true;
   $("#game").hidden = false;
   ready = true;
@@ -502,15 +517,7 @@ function bindEvents() {
     WEEK = +b.dataset.week;
     renderAll();
   });
-
-  $("#monthTabs").addEventListener("click", e => {
-    const b = e.target.closest("button[data-month]");
-    if (!b || b.dataset.month === MONTH) return;
-    MONTH = b.dataset.month;
-    const cur = pickCurrentWeek();
-    WEEK = monthOf(cur) === MONTH ? cur : monthWeeks()[0].n;
-    renderAll();
-  });
+  $("#todayBtn").addEventListener("click", () => { WEEK = pickCurrentWeek(); scrollTabs = true; renderAll(); });
 
   const groups = $("#groups");
   groups.addEventListener("click", e => {
@@ -519,7 +526,16 @@ function bindEvents() {
       const { t, n } = chk.dataset;
       const cur = !!slotOf(rowOf(WEEK, t), n).done;
       const base = `weeks/w${WEEK}/rows/${t}/s${n}`;
-      Store.update({ [`${base}/done`]: cur ? null : true, [`${base}/by`]: cur ? null : ME });
+      chk.setAttribute("aria-pressed", String(!cur));   // 누르자마자 바로 보이게
+      Store.update({
+        [`${base}/done`]: cur ? null : true,
+        [`${base}/by`]: cur ? null : ME,
+        [`${base}/at`]: cur ? null : Date.now()
+      }).catch(err => {
+        chk.setAttribute("aria-pressed", String(cur));
+        toast("저장하지 못했어요. 인터넷 연결을 확인해 주세요.");
+        console.error(err);
+      });
       return;
     }
     const clr = e.target.closest(".slot-clear");
@@ -560,7 +576,7 @@ function bindEvents() {
   renderModeBadges();
   let saved = "";
   try { saved = localStorage.getItem(LS_ME) || ""; } catch (e) {}
-  if (saved) {
+  if (saved && PEOPLE.includes(saved)) {
     const wait = () => (DATA.meta ? login(saved) : setTimeout(wait, 50));
     wait();
   }

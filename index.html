@@ -27,9 +27,9 @@
         <circle cx="38" cy="66" r="7" fill="#8E5BD6"/>
         <circle cx="84" cy="64" r="7" fill="#F08A24"/>
       </svg>
-      <p class="eyebrow">11월 – 2월 섬김 챌린지</p>
+      <p class="eyebrow">섬김 챌린지</p>
       <h1 class="title">인내의 숲</h1>
-      <p class="lead">이름만 입력하면 시작! 내 일정을 적고 체크해서<br>항목을 끝낼 때마다 나만의 나무에 스티커가 붙어요.</p>
+      <p class="lead">이름만 입력하면 시작! 내 일정을 적고 체크해서<br>끝낼 때마다 나만의 나무 두 그루에 스티커가 붙어요.</p>
       <form id="loginForm" class="login" autocomplete="off">
         <label for="nameInput" class="sr-only">이름</label>
         <input id="nameInput" name="name" maxlength="12" placeholder="이름을 입력하세요" required>
@@ -51,27 +51,38 @@
       </div>
     </header>
 
-    <div class="months" id="monthTabs" role="group" aria-label="월 선택"></div>
-    <nav class="weeks" id="weekTabs" role="tablist" aria-label="주차 선택"></nav>
+    <div class="week-bar">
+      <nav class="weeks" id="weekTabs" role="tablist" aria-label="주차 선택"></nav>
+      <button type="button" class="btn-ghost today" id="todayBtn">이번 주</button>
+    </div>
 
-    <main class="board">
-      <section class="panel tree-panel" aria-labelledby="treeTitle">
+    <section class="trees" aria-label="나의 나무">
+      <figure class="panel tree-panel tree-main">
         <div class="panel-head">
-          <h2 id="treeTitle">나의 나무</h2>
-          <span class="count" id="treeCount"></span>
+          <h2 id="tree-main-title">인내의 숲 나무</h2>
+          <span class="count" id="tree-main-count"></span>
         </div>
-        <div class="tree-wrap"><svg id="treeSvg" viewBox="0 0 400 440" role="img" aria-label="나의 나무 스티커판"></svg></div>
-      </section>
-
-      <section class="panel sched-panel" aria-labelledby="schedTitle">
+        <div class="tree-wrap"><svg id="tree-main" viewBox="0 0 400 440" role="img" aria-label="인내의 숲 나무"></svg></div>
+        <figcaption>청소·정리 항목을 끝낼 때마다 1개</figcaption>
+      </figure>
+      <figure class="panel tree-panel tree-massage">
         <div class="panel-head">
-          <h2 id="schedTitle">나의 스케줄</h2>
+          <h2 id="tree-massage-title">마사지 섬김 나무</h2>
+          <span class="count" id="tree-massage-count"></span>
         </div>
-        <p class="hint">날짜를 눌러 시간을 정하고, 끝나면 동그라미를 눌러 체크하세요. 항목의 칸이 모두 체크되면 내 나무에 스티커가 1개 붙어요. 마사지 섬김은 한 번만 체크하면 되고 스티커는 없어요.</p>
-        <div id="groups"></div>
-      </section>
-    </main>
+        <div class="tree-wrap"><svg id="tree-massage" viewBox="0 0 400 440" role="img" aria-label="마사지 섬김 나무"></svg></div>
+        <figcaption>마사지 섬김을 하면 1개</figcaption>
+      </figure>
+    </section>
 
+    <section class="panel sched-panel" aria-labelledby="schedTitle">
+      <div class="panel-head">
+        <h2 id="schedTitle">나의 스케줄</h2>
+        <span class="count" id="schedRange"></span>
+      </div>
+      <p class="hint">날짜를 눌러 시간을 정하고, 끝나면 동그라미를 눌러 체크하세요. 청소·정리 항목은 칸을 모두 체크하면 인내의 숲 나무에, 마사지 섬김은 한 번 체크하면 마사지 섬김 나무에 스티커가 붙어요. 스티커는 1번 칸부터 순서대로 채워져요.</p>
+      <div id="groups"></div>
+    </section>
   </section>
 
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
